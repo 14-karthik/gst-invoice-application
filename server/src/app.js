@@ -1,0 +1,37 @@
+const express=require('express');
+const cors=require('cors');
+const helmet=require('helmet');
+const morgan=require('morgan');
+const Business=require('./models/Business');
+const Customer=require('./models/Customer');
+const Invoice=require('./models/Invoice');
+const app=express();
+app.use(helmet({crossOriginResourcePolicy:false}));
+const allowedOrigins = new Set([process.env.CLIENT_URL || 'http://localhost:5173','http://localhost:5173','http://127.0.0.1:5173']);
+app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.has(origin))return callback(null,true);return callback(new Error(`CORS blocked origin: ${origin}`));}}));
+app.use(express.json({limit:'2mb'}));
+app.use(morgan('dev'));
+app.get('/api/health',(req,res)=>{const mongoose=require('mongoose');const connected=mongoose.connection.readyState===1;res.status(connected?200:503).json({ok:connected,database:mongoose.connection.name||null,readyState:mongoose.connection.readyState,message:connected?'MongoDB connected':'MongoDB is not connected'});});
+app.get('/api/business',async(req,res,next)=>{try{const b=await Business.findOne().lean();res.json(b||{});}catch(e){next(e);}});
+app.post('/api/business',async(req,res,next)=>{try{
+ const data={...req.body};delete data._id;delete data.__v;
+ if(!data.shop_name?.trim()||!data.address?.trim())return res.status(400).json({message:'Shop name and address are required.'});
+ const b=await Business.findOneAndUpdate({},data,{new:true,upsert:true,runValidators:true,setDefaultsOnInsert:true});res.json({message:'Business profile saved.',business:b});
+}catch(e){next(e);}});
+app.get('/api/customers',async(req,res,next)=>{try{res.json(await Customer.find().sort({createdAt:-1}).lean());}catch(e){next(e);}});
+app.post('/api/customers',async(req,res,next)=>{try{if(!req.body.name?.trim())return res.status(400).json({message:'Customer name is required.'});const c=await Customer.create(req.body);res.status(201).json(c);}catch(e){next(e);}});
+app.delete('/api/customers/:id',async(req,res,next)=>{try{const c=await Customer.findByIdAndDelete(req.params.id);if(!c)return res.status(404).json({message:'Customer not found'});res.json({message:'Customer deleted'});}catch(e){next(e);}});
+app.get('/api/invoices',async(req,res,next)=>{try{res.json(await Invoice.find().sort({createdAt:-1}).lean());}catch(e){next(e);}});
+app.get('/api/invoices/:id',async(req,res,next)=>{try{const i=await Invoice.findById(req.params.id).lean();if(!i)return res.status(404).json({message:'Invoice not found'});res.json(i);}catch(e){next(e);}});
+app.post('/api/invoices',async(req,res,next)=>{try{
+ const d=req.body||{};
+ if(!d.date||!d.customer?.name||!Array.isArray(d.items)||!d.items.length)return res.status(400).json({message:'Invoice date, buyer and at least one item are required.'});
+ const year=new Date(d.date).getFullYear();
+ const count=await Invoice.countDocuments({date:{$regex:`^${year}`}});
+ const invoice_no=d.invoice_no||`INV-${year}-${String(count+1).padStart(4,'0')}`;
+ const invoice=await Invoice.create({...d,invoice_no});
+ res.status(201).json({message:'Invoice saved to MongoDB.',invoice_no:invoice.invoice_no,invoice});
+}catch(e){next(e);}});
+app.use((req,res)=>res.status(404).json({message:'API route not found'}));
+app.use((err,req,res,next)=>{console.error(`[${req.method} ${req.originalUrl}]`,err);if(err.name==='ValidationError')return res.status(400).json({message:err.message});if(err.code===11000)return res.status(409).json({message:'Duplicate record. Check the invoice number and retry.'});if(err.name==='CastError')return res.status(400).json({message:'Invalid record ID or field value.'});res.status(500).json({message:err.message||'Server error'});});
+module.exports=app;
