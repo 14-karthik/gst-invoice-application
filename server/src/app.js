@@ -8,7 +8,17 @@ const Invoice=require('./models/Invoice');
 const app=express();
 app.use(helmet({crossOriginResourcePolicy:false}));
 const allowedOrigins = new Set([process.env.CLIENT_URL || 'http://localhost:5173','http://localhost:5173','http://127.0.0.1:5173']);
-app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.has(origin))return callback(null,true);return callback(new Error(`CORS blocked origin: ${origin}`));}}));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin) || origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked origin: ${origin}`));
+    },
+  })
+);
+
 app.use(express.json({limit:'2mb'}));
 app.use(morgan('dev'));
 app.get('/api/health',(req,res)=>{const mongoose=require('mongoose');const connected=mongoose.connection.readyState===1;res.status(connected?200:503).json({ok:connected,database:mongoose.connection.name||null,readyState:mongoose.connection.readyState,message:connected?'MongoDB connected':'MongoDB is not connected'});});
