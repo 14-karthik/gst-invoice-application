@@ -32,7 +32,6 @@ function ConnectionStatus(){
 }
 function PageHeading({tag,title,sub,action}){return <div className="page-heading"><div><div className="eyebrow">{tag}</div><h1>{title}</h1><p>{sub}</p></div>{action}</div>}
 function Notice({children,type='success'}){return <div className={`notice ${type}`}>{children}</div>}
-function Notice({children,type='success'}){return <div className={`notice ${type}`}>{children}</div>}
 
 function InvoiceList({ rows }) {
   return (
@@ -63,7 +62,7 @@ function InvoiceList({ rows }) {
   );
 }
 
-function Dashboard(){
+
 
 function Dashboard(){
  const [biz,setBiz]=useState({}),[invoices,setInvoices]=useState([]),[customers,setCustomers]=useState([]),[loadError,setLoadError]=useState('');
