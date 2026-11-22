@@ -32,6 +32,39 @@ function ConnectionStatus(){
 }
 function PageHeading({tag,title,sub,action}){return <div className="page-heading"><div><div className="eyebrow">{tag}</div><h1>{title}</h1><p>{sub}</p></div>{action}</div>}
 function Notice({children,type='success'}){return <div className={`notice ${type}`}>{children}</div>}
+function Notice({children,type='success'}){return <div className={`notice ${type}`}>{children}</div>}
+
+function InvoiceList({ rows }) {
+  return (
+    <div className="table-scroll">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Invoice number</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((inv) => (
+            <tr key={inv._id}>
+              <td><b className="invoice-ref">{inv.invoice_no}</b></td>
+              <td>{inv.date}</td>
+              <td>{inv.customer?.name || '—'}</td>
+              <td>{inv.items?.length || 0} items</td>
+              <td><b>{money(inv.grand_total)}</b></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Dashboard(){
+
 function Dashboard(){
  const [biz,setBiz]=useState({}),[invoices,setInvoices]=useState([]),[customers,setCustomers]=useState([]),[loadError,setLoadError]=useState('');
  const load=()=>Promise.all([api.get('/business'),api.get('/invoices'),api.get('/customers')]).then(([b,i,c])=>{setBiz(b.data);setInvoices(i.data);setCustomers(c.data);setLoadError('');}).catch(e=>setLoadError(apiError(e)));
